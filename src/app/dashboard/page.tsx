@@ -221,24 +221,46 @@ export default function DashboardPage() {
   );
 }
 
+type Filter = {
+  id: string;
+  label: string;
+  type: string;
+  attributeUri: string;
+  multiple: boolean;
+};
+
+type Kpi = {
+  label: string;
+  description: string;
+  obj: string;
+};
+
+type Tab = {
+  identifier: string;
+  title: string;
+  kpis: Kpi[];
+};
+
 function DashboardContent({ projectId, dashboardId }: { projectId: string; dashboardId: string }) {
-  const [tabs, setTabs] = useState<{ identifier: string; title: string }[]>([]);
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [filters, setFilters] = useState<Filter[]>([]);
+  const [selectedTab, setSelectedTab] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setSelectedTab('');
       try {
         const res = await fetch(`/api/projects/${projectId}/dashboards/${dashboardId}`);
         const data = await res.json();
+        setTabs(data.tabs || []);
+        setFilters(data.filters || []);
 
-        // Extrai tabs da estrutura
-        const rawTabs = data.tabs || [];
-        const formattedTabs = rawTabs.map((t: Record<string, unknown>) => ({
-          identifier: t.identifier || '',
-          title: t.title || 'Sem título',
-        }));
-        setTabs(formattedTabs);
+        // Seleciona primeira aba automaticamente
+        if (data.tabs?.length > 0) {
+          setSelectedTab(data.tabs[0].identifier);
+        }
       } catch {
         console.error('Erro ao carregar dashboard');
       } finally {
@@ -252,24 +274,75 @@ function DashboardContent({ projectId, dashboardId }: { projectId: string; dashb
     return <div className="text-center py-8 text-gray-500">Carregando dashboard...</div>;
   }
 
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Abas do Dashboard</h2>
+  const activeTab = tabs.find((t) => t.identifier === selectedTab);
 
-      {tabs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {tabs.map((tab) => (
-            <div
-              key={tab.identifier}
-              className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 cursor-pointer"
-            >
-              <h3 className="font-medium">{tab.title}</h3>
-              <p className="text-sm text-gray-500">{tab.identifier}</p>
-            </div>
-          ))}
+  return (
+    <div className="space-y-6">
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b">
+          <nav className="flex space-x-4 px-4" aria-label="Tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.identifier}
+                onClick={() => setSelectedTab(tab.identifier)}
+                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  selectedTab === tab.identifier
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.title}
+                <span className="ml-2 text-xs text-gray-400">({tab.kpis.length})</span>
+              </button>
+            ))}
+          </nav>
         </div>
-      ) : (
-        <div className="text-gray-500">Nenhuma aba encontrada</div>
+      </div>
+
+      {/* Filtros */}
+      {filters.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Filtros</h3>
+          <div className="flex flex-wrap gap-2">
+            {filters.map((filter) => (
+              <span
+                key={filter.id}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700"
+              >
+                {filter.label || 'Sem nome'}
+                <span className="ml-1 text-xs text-gray-400">({filter.type})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KPIs da aba selecionada */}
+      {activeTab && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            KPIs - {activeTab.title}
+          </h3>
+
+          {activeTab.kpis.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeTab.kpis.map((kpi, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <h4 className="font-medium text-gray-900">{kpi.label || 'Sem título'}</h4>
+                  {kpi.description && (
+                    <p className="mt-1 text-sm text-gray-500">{kpi.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">Nenhum KPI nesta aba</p>
+          )}
+        </div>
       )}
     </div>
   );
