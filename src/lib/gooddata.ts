@@ -43,11 +43,28 @@ export async function authenticate(username: string, password: string): Promise<
   });
 
   if (!response.ok) {
+    const text = await response.text();
+    console.error('[AUTH] Login failed:', response.status, text);
     throw new GoodDataAuthError(`Falha no login: Status ${response.status}`);
   }
 
   const data = await response.json();
-  const cookies = response.headers.get('set-cookie') || '';
+
+  // Captura cookies - funciona tanto em Node.js quanto em Edge
+  let cookies = '';
+  const setCookieHeader = response.headers.getSetCookie?.();
+  if (setCookieHeader && setCookieHeader.length > 0) {
+    // Node.js 18+ tem getSetCookie()
+    cookies = setCookieHeader.map(c => c.split(';')[0]).join('; ');
+  } else {
+    // Fallback para headers raw
+    const rawCookies = response.headers.get('set-cookie');
+    if (rawCookies) {
+      cookies = rawCookies.split(/,(?=\s*\w+=)/).map(c => c.split(';')[0].trim()).join('; ');
+    }
+  }
+
+  console.log('[AUTH] Cookies captured:', cookies ? 'Yes' : 'No');
 
   // Extrai profile ID
   let profileId = '';
@@ -55,6 +72,8 @@ export async function authenticate(username: string, password: string): Promise<
   if (typeof userLogin === 'object' && userLogin?.profile) {
     profileId = userLogin.profile.split('/').pop() || '';
   }
+
+  console.log('[AUTH] Profile ID:', profileId);
 
   return { cookies, profileId };
 }
@@ -69,6 +88,8 @@ async function gdRequest<T>(
 ): Promise<T> {
   const url = `${GOODDATA_BASE_URL}${path}`;
 
+  console.log('[GD_REQUEST]', options.method || 'GET', path);
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -80,6 +101,8 @@ async function gdRequest<T>(
   });
 
   if (!response.ok) {
+    const text = await response.text();
+    console.error('[GD_REQUEST] Error:', response.status, text.substring(0, 200));
     throw new GoodDataAuthError(`Erro ${response.status}: ${response.statusText}`);
   }
 
