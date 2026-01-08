@@ -9,6 +9,16 @@ Dashboard de analytics integrado com GoodData (TOTVS Analytics).
 - **Tailwind CSS** - Estilização
 - **GoodData API** - Backend direto (sem Django)
 
+## Credenciais de Demo
+
+Para testar o app, use a conta de demonstração do TOTVS Analytics:
+
+| Campo | Valor |
+|-------|-------|
+| **URL** | https://analytics.totvs.com.br |
+| **Usuário** | demo.gd@totvs.com.br |
+| **Senha** | fastanalytics |
+
 ## Rodar localmente
 
 ```bash
