@@ -16,9 +16,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const view = await getDashboardView(session.cookies, projectId, dashboardId);
 
-    // Extrai tabs da estrutura do dashboard
-    const content = (view as Record<string, unknown>).projectDashboard as Record<string, unknown> | undefined;
-    const tabs = ((content?.content as Record<string, unknown>)?.tabs as unknown[]) || [];
+    // Extrai tabs da estrutura do dashboard (projectDashboardView.content.tabs)
+    const dashboardView = (view as Record<string, unknown>).projectDashboardView as Record<string, unknown> | undefined;
+    const content = dashboardView?.content as Record<string, unknown> | undefined;
+    const rawTabs = (content?.tabs as Array<Record<string, unknown>>) || [];
+
+    // Formata tabs com identifier e title
+    const tabs = rawTabs.map((tab) => ({
+      identifier: tab.identifier || '',
+      title: tab.title || 'Sem título',
+    }));
+
+    console.log('[DASHBOARD VIEW] Found', tabs.length, 'tabs');
 
     return NextResponse.json({ dashboard: view, tabs });
   } catch (error) {
